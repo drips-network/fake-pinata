@@ -26,6 +26,8 @@ app.post('/pinning/pinJSONToIPFS', async (req, res) => {
       PinSize: pinataContent.length,
       Timestamp: new Date().toISOString(),
     });
+
+    console.log(`PIN SUCCESS — ${cid}`, pinataContent)
   } catch (e) {
     console.error(e);
     res.sendStatus(500);
@@ -35,11 +37,15 @@ app.post('/pinning/pinJSONToIPFS', async (req, res) => {
 app.get('/ipfs/:cid', async (req, res) => {
   const { cid } = req.params;
 
-  if (!GLOBAL_KEY_STORE[cid]) {
+  const pinataContent = GLOBAL_KEY_STORE[cid];
+
+  if (!pinataContent) {
     return res.sendStatus(404);
   }
 
-  res.json(GLOBAL_KEY_STORE[cid]);
+  res.json(pinataContent);
+
+  console.log(`RETRIEVE SUCCESS — ${cid}`, pinataContent)
 });
 
 app.listen(3000, () => {
