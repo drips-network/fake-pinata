@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import hash from "ipfs-only-hash";
 
 const app = express();
 
@@ -18,8 +19,7 @@ app.post('/pinning/pinJSONToIPFS', async (req, res) => {
   if (!pinataContent) return res.sendStatus(400);
 
   try {
-    // Doesn't really matter if it's a real CID or not.
-    const cid = crypto.randomUUID();
+    const cid = hash.of(JSON.stringify(pinataContent));
 
     GLOBAL_KEY_STORE[cid] = pinataContent;
 
@@ -50,6 +50,6 @@ app.get('/ipfs/:cid', async (req, res) => {
   console.log(`RETRIEVE SUCCESS — ${cid}`, pinataContent)
 });
 
-app.listen(3000, () => {
+app.listen(3005, () => {
   console.log('Listening on port 3000');
 });
