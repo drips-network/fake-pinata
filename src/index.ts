@@ -50,6 +50,6 @@ app.get('/ipfs/:cid', async (req, res) => {
   console.log(`RETRIEVE SUCCESS — ${cid}`, pinataContent)
 });
 
-app.listen(3005, () => {
+app.listen(3000, () => {
   console.log('Listening on port 3000');
 });
