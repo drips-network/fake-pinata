@@ -19,7 +19,7 @@ app.post('/pinning/pinJSONToIPFS', async (req, res) => {
   if (!pinataContent) return res.sendStatus(400);
 
   try {
-    const cid = hash.of(JSON.stringify(pinataContent));
+    const cid = await hash.of(JSON.stringify(pinataContent));
 
     GLOBAL_KEY_STORE[cid] = pinataContent;
 
