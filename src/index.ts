@@ -1,14 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import hash from "ipfs-only-hash";
+import db from './db'; // Import the database instance
 
 const app = express();
 
-/**
- * We're saving data in here. It's totally fine since this service is only intended
- * to be ran ephemerally in the context of an E2E test.
- */
-const GLOBAL_KEY_STORE: Record<string, unknown> = {};
 
 app.use(express.json());
 app.use(cors());
@@ -20,16 +16,19 @@ app.post('/pinning/pinJSONToIPFS', async (req, res) => {
 
   try {
     const cid = await hash.of(JSON.stringify(pinataContent));
+    const timestamp = new Date().toISOString();
+    const pinSize = JSON.stringify(pinataContent).length; // Calculate pin size from stringified content
 
-    GLOBAL_KEY_STORE[cid] = pinataContent;
+    const stmt = db.prepare('INSERT INTO pins (cid, content, timestamp, pin_size) VALUES (?, ?, ?, ?)');
+    stmt.run(cid, JSON.stringify(pinataContent), timestamp, pinSize);
 
     res.json({
       IpfsHash: cid,
-      PinSize: pinataContent.length,
-      Timestamp: new Date().toISOString(),
+      PinSize: pinSize,
+      Timestamp: timestamp,
     });
 
-    console.log(`PIN SUCCESS — ${cid}`, pinataContent)
+    console.log(`PIN SUCCESS — ${cid}`, pinataContent);
   } catch (e) {
     console.error(e);
     res.sendStatus(500);
@@ -39,15 +38,22 @@ app.post('/pinning/pinJSONToIPFS', async (req, res) => {
 app.get('/ipfs/:cid', async (req, res) => {
   const { cid } = req.params;
 
-  const pinataContent = GLOBAL_KEY_STORE[cid];
+  try {
+    const stmt = db.prepare('SELECT content FROM pins WHERE cid = ?');
+    const row = stmt.get(cid) as { content: string } | undefined;
 
-  if (!pinataContent) {
-    return res.sendStatus(404);
+    if (!row) {
+      return res.sendStatus(404);
+    }
+
+    const pinataContent = JSON.parse(row.content);
+    res.json(pinataContent);
+
+    console.log(`RETRIEVE SUCCESS — ${cid}`, pinataContent);
+  } catch (e) {
+    console.error(e);
+    res.sendStatus(500);
   }
-
-  res.json(pinataContent);
-
-  console.log(`RETRIEVE SUCCESS — ${cid}`, pinataContent)
 });
 
 app.get('/health', (req, res) => {
