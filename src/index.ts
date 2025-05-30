@@ -16,19 +16,34 @@ app.post('/pinning/pinJSONToIPFS', async (req, res) => {
 
   try {
     const cid = await hash.of(JSON.stringify(pinataContent));
-    const timestamp = new Date().toISOString();
-    const pinSize = JSON.stringify(pinataContent).length; // Calculate pin size from stringified content
 
-    const stmt = db.prepare('INSERT INTO pins (cid, content, timestamp, pin_size) VALUES (?, ?, ?, ?)');
-    stmt.run(cid, JSON.stringify(pinataContent), timestamp, pinSize);
+    // Check if CID already exists
+    const selectStmt = db.prepare('SELECT cid, timestamp, pin_size FROM pins WHERE cid = ?');
+    const existingPin = selectStmt.get(cid) as { cid: string; timestamp: string; pin_size: number } | undefined;
 
-    res.json({
-      IpfsHash: cid,
-      PinSize: pinSize,
-      Timestamp: timestamp,
-    });
+    if (existingPin) {
+      // If CID exists, return existing data
+      res.json({
+        IpfsHash: existingPin.cid,
+        PinSize: existingPin.pin_size,
+        Timestamp: existingPin.timestamp,
+      });
+      console.log(`PIN DUPLICATE (already exists) — ${cid}`, pinataContent);
+    } else {
+      // If CID does not exist, insert new pin
+      const timestamp = new Date().toISOString();
+      const pinSize = JSON.stringify(pinataContent).length; // Calculate pin size from stringified content
 
-    console.log(`PIN SUCCESS — ${cid}`, pinataContent);
+      const insertStmt = db.prepare('INSERT INTO pins (cid, content, timestamp, pin_size) VALUES (?, ?, ?, ?)');
+      insertStmt.run(cid, JSON.stringify(pinataContent), timestamp, pinSize);
+
+      res.json({
+        IpfsHash: cid,
+        PinSize: pinSize,
+        Timestamp: timestamp,
+      });
+      console.log(`PIN SUCCESS — ${cid}`, pinataContent);
+    }
   } catch (e) {
     console.error(e);
     res.sendStatus(500);
